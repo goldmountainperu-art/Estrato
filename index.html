@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estrato – Proyectos de ingeniería geológica, minera y metalúrgica</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9ECEA;--surface:#fff;--ink:#1F2A30;--mute:#5B686E;--line:#C9D0CE;--geo:#B8862F;--min:#5B6B73;--met:#1F6F78;--on:#fff;--err:#A63A2B;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#151C20;--surface:#1E282D;--ink:#E7ECEA;--mute:#9AA8AD;--line:#33424A;--geo:#D1A24A;--min:#8497A0;--met:#3FA0AB;--on:#10171A;--err:#E27A68;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 "Source Serif 4",Georgia,serif}
+h1,h2,h3,button,.sans{font-family:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:20px 18px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;gap:10px;flex-wrap:wrap}
+.logo{font:800 22px "Bricolage Grotesque",sans-serif;letter-spacing:-.02em}
+#who{display:flex;align-items:center;gap:10px;font-size:14px}
+button{font-size:15px;cursor:pointer;border:0;border-radius:6px;padding:10px 14px;background:var(--ink);color:var(--bg);font-weight:700}
+button.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--met);outline-offset:2px}
+h1{font-size:clamp(30px,8vw,46px);line-height:1.05;letter-spacing:-.03em;margin:0 0 12px;font-weight:800}
+h2{font-size:22px;margin:36px 0 10px}
+.lead{color:var(--mute);margin:0 0 20px;max-width:52ch}
+#msg{min-height:24px;margin-bottom:12px;font-size:15px;color:var(--met)}#msg.err{color:var(--err)}
+.strata{display:flex;flex-direction:column;margin-bottom:18px;border-radius:6px;overflow:hidden}
+.band{display:flex;justify-content:space-between;align-items:center;text-align:left;border-radius:0;padding:15px 18px;color:var(--on);font-size:18px;width:100%}
+.band small{font:500 14px "Source Serif 4",serif;opacity:.9}
+.band[data-r="geologica"]{background:var(--geo)}.band[data-r="minera"]{background:var(--min)}.band[data-r="metalurgica"]{background:var(--met)}
+.band[aria-pressed="true"]{box-shadow:inset 7px 0 0 var(--ink);padding-left:28px}
+.band.all{background:var(--surface);color:var(--ink);border-bottom:1px solid var(--line)}
+.tabs{display:flex;gap:8px;margin-bottom:20px}
+.tab{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.tab[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.item{background:var(--surface);border-left:6px solid var(--c);padding:16px 18px;margin-bottom:12px;border-radius:0 6px 6px 0}
+.item h3{margin:0 0 4px;font-size:19px;line-height:1.25}
+.meta{font:500 14px "Bricolage Grotesque",sans-serif;color:var(--mute);margin:0 0 8px}
+.item p{margin:0 0 12px;font-size:16px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.price{font:800 20px "Bricolage Grotesque",sans-serif}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.soon{font:600 13px "Bricolage Grotesque",sans-serif;color:var(--mute)}
+.sheet{position:fixed;inset:0;background:rgba(10,15,18,.6);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.sheet.on{display:flex}
+.panel{background:var(--surface);width:100%;max-width:560px;border-radius:14px 14px 0 0;padding:22px 20px 28px;max-height:92vh;overflow:auto}
+.panel h2{margin:0 0 6px}
+label{display:block;font:600 14px "Bricolage Grotesque",sans-serif;margin:12px 0 4px}
+input,select,textarea{width:100%;padding:10px;font:inherit;font-size:16px;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);border-radius:6px}
+.actions{display:flex;gap:10px;margin-top:16px}.actions button{flex:1}
+.note{font-size:15px;color:var(--mute)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><span class="logo">Estrato</span><div id="who"></div></div>
+  <h1>Investigación de ingeniería, de la roca a la planta</h1>
+  <p class="lead">Proyectos de ingeniería geológica, minera y metalúrgica escritos por ingenieros. Lee el resumen gratis.</p>
+  <div id="msg" role="status"></div>
+  <div class="strata" id="strata"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="list"></div>
+  <div id="panels"></div>
+</div>
+<div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+var C=window.ESTRATO,sb=supabase.createClient(C.SUPABASE_URL,C.SUPABASE_KEY);
+var R={geologica:{n:"Geológica",c:"var(--geo)"},minera:{n:"Minera",c:"var(--min)"},metalurgica:{n:"Metalúrgica",c:"var(--met)"}};
+var cur="all",pay="all",P=[],me=null,rol=null,nombre="";
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function money(n){return "S/ "+Number(n).toFixed(2)}
+function say(t,err){$("msg").textContent=t||"";$("msg").className=err?"err":""}
+function openSheet(h){$("panel").innerHTML=h;$("sheet").classList.add("on")}
+function closeSheet(){$("sheet").classList.remove("on")}
+$("sheet").onclick=function(e){if(e.target===$("sheet"))closeSheet()};
+
+async function loadCatalog(){
+  var r=await sb.from("proyectos").select("*").eq("estado","publicado").order("creado_en",{ascending:false});
+  if(r.error){say("No se pudo cargar el catálogo: "+(r.error.message||"error desconocido")+" (revisa config.js y la fase 2).",1);return}
+  P=r.data;strata();tabs();list();
+}
+function strata(){
+  var h='<button class="band all" data-r="all" aria-pressed="'+(cur==="all")+'"><span>Todas las ramas</span><small>'+P.length+' trabajos</small></button>';
+  Object.keys(R).forEach(function(k){var n=P.filter(function(x){return x.rama===k}).length;
+    h+='<button class="band" data-r="'+k+'" aria-pressed="'+(cur===k)+'"><span>'+R[k].n+'</span><small>'+n+' trabajos</small></button>'});
+  $("strata").innerHTML=h;
+  [].forEach.call(document.querySelectorAll(".band"),function(b){b.onclick=function(){cur=b.dataset.r;strata();list()}});
+}
+function tabs(){
+  var o=[["all","Todos"],["free","Gratis"],["paid","De pago"]],h="";
+  o.forEach(function(k){h+='<button class="tab" data-p="'+k[0]+'" aria-pressed="'+(pay===k[0])+'">'+k[1]+'</button>'});
+  $("tabs").innerHTML=h;
+  [].forEach.call(document.querySelectorAll(".tab"),function(b){b.onclick=function(){pay=b.dataset.p;tabs();list()}});
+}
+function list(){
+  var h="";
+  P.forEach(function(x){
+    if(cur!=="all"&&x.rama!==cur)return;
+    if((pay==="free"&&Number(x.precio)>0)||(pay==="paid"&&Number(x.precio)===0))return;
+    h+='<div class="item" style="--c:'+R[x.rama].c+'"><h3>'+esc(x.titulo)+'</h3><p class="meta">'+R[x.rama].n+' · '+esc(x.autor_nombre||"Autor")+'</p><p>'+esc(x.resumen)+'</p><div class="row"><span class="price">'+(Number(x.precio)>0?money(x.precio):"Gratis")+'</span><span class="btns">'+dl(x)+(rol==="admin"?'<button class="ghost" data-del="'+x.id+'">Quitar</button>':'')+'</span></div></div>';
+  });
+  $("list").innerHTML=h||'<p class="lead">Aún no hay trabajos publicados aquí.</p>';
+}
+
+function dl(x){
+  if(!x.archivo_path)return '<span class="soon">Sin archivo</span>';
+  var mine=me&&(me.id===x.autor_id||rol==="admin");
+  if(Number(x.precio)===0||mine)return '<button data-dl="'+esc(x.archivo_path)+'">Descargar PDF</button>';
+  return '<span class="soon">Compra disponible pronto</span>';
+}
+async function descargar(path){
+  var r=await sb.storage.from("trabajos").createSignedUrl(path,60,{download:true});
+  if(r.error){say("No se pudo preparar la descarga: "+r.error.message,1);return}
+  window.location.href=r.data.signedUrl;
+}
+document.addEventListener("click",function(e){var b=e.target.closest("[data-dl]");if(b)descargar(b.getAttribute("data-dl"))});
+
+async function quitar(id){
+  var x=P.find(function(p){return p.id===id});if(!x)return;
+  if(!confirm("¿Quitar “"+x.titulo+"” del catálogo? También se borrará su PDF y no se puede deshacer."))return;
+  var d=await sb.from("proyectos").delete().eq("id",id).select();
+  if(d.error||!d.data||!d.data.length){say("No se pudo quitar el trabajo"+(d.error?": "+d.error.message:"."),1);return}
+  if(x.archivo_path)await sb.storage.from("trabajos").remove([x.archivo_path]);
+  say("Trabajo quitado.");loadCatalog();
+}
+document.addEventListener("click",function(e){var b=e.target.closest("[data-del]");if(b)quitar(b.getAttribute("data-del"))});
+
+/* Cuenta */
+async function session(){
+  var s=await sb.auth.getSession();
+  me=s.data.session?s.data.session.user:null;rol=null;nombre="";
+  if(me){var p=await sb.from("perfiles").select("nombre,rol").eq("id",me.id).maybeSingle();if(p.data){rol=p.data.rol;nombre=p.data.nombre}}
+  who();panels();
+}
+function who(){
+  if(me){$("who").innerHTML='<span class="sans">'+esc(nombre||me.email)+' · '+esc(rol||"")+'</span><button class="ghost" id="out">Salir</button>';
+    $("out").onclick=async function(){await sb.auth.signOut();say("Sesión cerrada.")}}
+  else{$("who").innerHTML='<button class="ghost" id="reg">Crear cuenta</button><button id="in">Ingresar</button>';
+    $("in").onclick=function(){authSheet("login")};$("reg").onclick=function(){authSheet("signup")}}
+}
+function authSheet(mode){
+  var s=mode==="signup";
+  openSheet('<h2>'+(s?"Crear cuenta":"Ingresar")+'</h2>'+(s?'<label for="a0">Nombre</label><input id="a0" autocomplete="name">':'')+'<label for="a1">Correo</label><input id="a1" type="email" autocomplete="email"><label for="a2">Contraseña</label><input id="a2" type="password" minlength="8" autocomplete="'+(s?"new-password":"current-password")+'"><p class="note" id="a3"></p><div class="actions"><button class="ghost" id="a4">Cancelar</button><button id="a5">'+(s?"Crear cuenta":"Ingresar")+'</button></div>');
+  $("a4").onclick=closeSheet;
+  $("a5").onclick=async function(){
+    var e=$("a1").value.trim(),p=$("a2").value;
+    if(!e||p.length<8){$("a3").textContent="Escribe tu correo y una contraseña de al menos 8 caracteres.";return}
+    var r=s?await sb.auth.signUp({email:e,password:p,options:{data:{nombre:($("a0").value||"").trim()}}}):await sb.auth.signInWithPassword({email:e,password:p});
+    if(r.error){$("a3").textContent="No se pudo completar: "+r.error.message;return}
+    closeSheet();
+    say(s&&!r.data.session?"Cuenta creada. Revisa tu correo para confirmarla y luego ingresa.":"Listo.");
+  };
+}
+
+/* Paneles según rol */
+async function panels(){
+  var h="";
+  if(me&&rol==="visitante")h='<h2>Quiero publicar</h2><p class="note">Tu cuenta es de lector. Para publicar trabajos, escribe al administrador para que te apruebe como autor.</p>';
+  if(me&&(rol==="autor"||rol==="admin"))h+='<h2>Publicar un trabajo</h2><p class="note">Tu trabajo se revisa antes de aparecer en el catálogo.</p><p><button id="pub">Publicar trabajo</button></p>';
+  if(rol==="admin")h+='<h2>Pendientes de revisión</h2><div id="pend"><p class="note">Cargando…</p></div>';
+  $("panels").innerHTML=h;
+  if($("pub"))$("pub").onclick=pubSheet;
+  if(rol==="admin")loadPending();
+}
+function pubSheet(){
+  openSheet('<h2>Publicar un trabajo</h2><label for="p1">Título</label><input id="p1"><label for="p2">Rama</label><select id="p2"><option value="geologica">Geológica</option><option value="minera">Minera</option><option value="metalurgica">Metalúrgica</option></select><label for="p3">Resumen público</label><textarea id="p3" rows="4"></textarea><label for="pf">Archivo PDF (máx. 20 MB)</label><input id="pf" type="file" accept="application/pdf"><label for="p4">Precio de descarga (S/, 0 = gratis)</label><input id="p4" type="number" min="0" max="500" step="0.5" value="5"><p class="note" id="p5">No incluyas datos confidenciales de clientes.</p><div class="actions"><button class="ghost" id="p6">Cancelar</button><button id="p7">Enviar a revisión</button></div>');
+  $("p6").onclick=closeSheet;
+  $("p7").onclick=async function(){
+    var pr=parseFloat($("p4").value),f=$("pf").files[0];
+    if(!f||f.type!=="application/pdf"||f.size>20*1024*1024){$("p5").textContent="Elige un archivo PDF de hasta 20 MB.";return}
+    $("p7").disabled=true;$("p5").textContent="Subiendo…";
+    var path=me.id+"/"+Date.now()+"-"+Math.random().toString(36).slice(2,8)+".pdf";
+    var up=await sb.storage.from("trabajos").upload(path,f,{contentType:"application/pdf"});
+    if(up.error){$("p7").disabled=false;$("p5").textContent="No se pudo subir el PDF: "+up.error.message;return}
+    var r=await sb.from("proyectos").insert({titulo:$("p1").value.trim(),rama:$("p2").value,resumen:$("p3").value.trim(),precio:isNaN(pr)?0:pr,archivo_path:path});
+    if(r.error){$("p7").disabled=false;$("p5").textContent="No se pudo enviar. Revisa que el título tenga 5 o más letras y el resumen 20 o más.";return}
+    closeSheet();say("Trabajo enviado a revisión.");if(rol==="admin")loadPending();
+  };
+}
+async function loadPending(){
+  var r=await sb.from("proyectos").select("*").eq("estado","pendiente").order("creado_en");
+  var box=$("pend");if(!box)return;
+  if(r.error||!r.data.length){box.innerHTML='<p class="note">No hay trabajos pendientes.</p>';return}
+  box.innerHTML=r.data.map(function(x){return '<div class="item" style="--c:'+R[x.rama].c+'"><h3>'+esc(x.titulo)+'</h3><p class="meta">'+R[x.rama].n+' · '+esc(x.autor_nombre||"Autor")+' · '+money(x.precio)+'</p><p>'+esc(x.resumen)+'</p><div class="actions"><button class="ghost" data-dl="'+esc(x.archivo_path||"")+'">Ver PDF</button><button class="ghost" data-id="'+x.id+'" data-st="rechazado">Rechazar</button><button data-id="'+x.id+'" data-st="publicado">Aprobar</button></div></div>'}).join("");
+  [].forEach.call(box.querySelectorAll("button[data-st]"),function(b){b.onclick=async function(){
+    var u=await sb.from("proyectos").update({estado:b.dataset.st}).eq("id",b.dataset.id);
+    if(u.error){say("No se pudo actualizar.",1);return}
+    say(b.dataset.st==="publicado"?"Trabajo publicado.":"Trabajo rechazado.");loadPending();loadCatalog();
+  }});
+}
+
+sb.auth.onAuthStateChange(function(){session()});
+session();loadCatalog();
+</script>
+</body>
+</html>
